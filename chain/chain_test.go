@@ -23,6 +23,7 @@ func TestTakeLongest(t *testing.T) {
 }
 
 func TestTakeMostDifficult(t *testing.T) {
+	//create test chains, check that it changes to the one with the highest difficulty
 	globalChain = nil
 	chain1 := createTestDiffChain(10, 1, 1, 1)
 	globalChain = nil

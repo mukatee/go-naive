@@ -108,10 +108,12 @@ func hash(block *Block) string {
 	timeStr := strconv.FormatUint(uint64(block.Timestamp.Unix()), 16) //base 16 output
 	nonceStr := strconv.Itoa(block.Nonce)
 	diffStr := strconv.Itoa(block.Difficulty)
+	txBytes, _ := json.Marshal(block.Transactions)
+	txStr := string(txBytes)
 	//this joins all the block elements to one long string with all elements appended after another, to produce the hash
-	data := strings.Join([]string{indexStr, block.PreviousHash, timeStr, diffStr, block.Data, nonceStr}, " ")
+	blockStr := strings.Join([]string{indexStr, block.PreviousHash, timeStr, diffStr, block.Data, txStr, nonceStr}, " ")
 //	print(data)
-	bytes := []byte(data)
+	bytes := []byte(blockStr)
 	hash := sha256.Sum256(bytes)
 	s := hex.EncodeToString(hash[:]) //encode the Hash as a hex-string. the [:] is slicing to match datatypes in args
 	return s

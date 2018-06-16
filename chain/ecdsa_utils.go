@@ -11,7 +11,7 @@ import (
 	"crypto/sha256"
 )
 
-//holds the two bigints required to represent (sign/verify) an ECDSA signature
+//ecdsaSignature holds the two bigints required to represent (sign/verify) an ECDSA signature
 type ecdsaSignature struct {
 	R, S *big.Int
 }
@@ -56,6 +56,10 @@ func encodePublicKey(pubKey ecdsa.PublicKey) string {
 	return base58.Encode(whole)
 }
 
+//mergeTwoByteSlices merges two byte slices into a single slice.
+//the new slice will start with single byte for the length of first slice in new slice.
+//this is followed by the first slice, which is followed by second slice
+//so newslice = [slice1length][slice1][slice2]
 func mergeTwoByteSlices(slice1 []byte, slice2 []byte) []byte {
 	s1Len := len(slice1)
 	s2Len := len(slice2)
@@ -67,8 +71,9 @@ func mergeTwoByteSlices(slice1 []byte, slice2 []byte) []byte {
 	return finalBytes
 }
 
+//splitTwoByteSlices splits a merged byte slice, produced by mergeTwoByteSlices()
 func splitTwoByteSlices(whole []byte) ([]byte, []byte) {
-	//int(byte) seems to always produce a positive valued integer (-1 = 255)
+	//int(byte) seems to always produce a positive valued integer (-1 = 255). so I just trust this is ok for 1 byte length
 	size1 := int(whole[0])
 	slice1End := 1+size1
 	//if want big.int: https://stackoverflow.com/questions/24757814/golang-convert-byte-array-to-big-int
@@ -77,9 +82,11 @@ func splitTwoByteSlices(whole []byte) ([]byte, []byte) {
 	return slice1, slice2
 }
 
+//decodePublicKey takes as parameter a base58 encoded public key string, decodes it into golang structure
 func decodePublicKey(b58 string) *ecdsa.PublicKey {
 	pubKey := new(ecdsa.PublicKey)
 	data, _ := base58.Decode(b58) //TODO: error handling
+	//the public key is built from to big integers, so get those first, then construct the key
 	xBytes, yBytes := splitTwoByteSlices(data)
 	pubKey.X = bytesToBigInt(xBytes)
 	pubKey.Y = bytesToBigInt(yBytes)
@@ -89,17 +96,20 @@ func decodePublicKey(b58 string) *ecdsa.PublicKey {
 	return pubKey
 }
 
+//b58ToBigInt parses the bytes encoded as base58 in given string, and converts into big integer
 func b58ToBigInt(str string) *big.Int {
 	xBytes, _ := base58.Decode(str)
 	return bytesToBigInt(xBytes)
 }
 
+//bytesToBigInt takes the given slice of bytes and converts them into a big integer. TODO: endian?
 func bytesToBigInt(data []byte) *big.Int {
 	x := new(big.Int)
 	x.SetBytes(data)
 	return x
 }
 
+//HexToPublicKey converts a hex-encoded string into a golang public key structure
 func HexToPublicKey(xHex string, yHex string) *ecdsa.PublicKey {
 	xBytes, _ := hex.DecodeString(xHex)
 	x := new(big.Int)
@@ -118,6 +128,7 @@ func HexToPublicKey(xHex string, yHex string) *ecdsa.PublicKey {
 	return pub
 }
 
+//hexToPrivateKey converts a hex-encoded string into a golang private key structure
 func hexToPrivateKey(hexStr string)  *ecdsa.PrivateKey {
 	bytes, err := hex.DecodeString(hexStr)
 	print(err)

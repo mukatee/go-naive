@@ -39,6 +39,6 @@ func validateTimestamp(newBlock Block, prevBlock Block) bool {
 	diff := newBlock.Timestamp.Sub(prevBlock.Timestamp)
 	pastOk := diff > -60
 	futureOk := diff < 60
-	return !pastOk && !futureOk
+	return pastOk && futureOk
 }
 
