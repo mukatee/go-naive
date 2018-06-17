@@ -1,5 +1,6 @@
 package chain
 
+//balanceFor counts the unspent balance for given address (as count of unspent txouts)
 func balanceFor(address string) int {
 	balance := 0
 	for _, val := range unspentTxOuts {
@@ -10,6 +11,7 @@ func balanceFor(address string) int {
 	return balance
 }
 
+//findTxInsFor looks for unspent txouts for the given address to match the amount wanting to spend
 func findTxInsFor(address string, amount int) ([]TxIn, int) {
 	balance := 0
 	var unspents []TxIn
@@ -26,6 +28,8 @@ func findTxInsFor(address string, amount int) ([]TxIn, int) {
 	return nil, -1
 }
 
+//splitTxIns produces two txouts, by taking the total sum of txins and the amount to send
+//and splitting this to one txout for the coins to send, and another for the remains to send back to self
 func splitTxIns(from string, to string, toSend int, total int) []TxOut {
 	diff := total - toSend
 	txOut := TxOut{to, toSend}
