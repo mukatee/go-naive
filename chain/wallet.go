@@ -1,6 +1,96 @@
 package chain
 
+import (
+	"os"
+	"crypto/ecdsa"
+	"bufio"
+	"fmt"
+	"encoding/json"
+	"io/ioutil"
+)
+
+var walletPath = "node/wallet/"
+var walletFileName = "wallet.json"
+var walletKey *ecdsa.PrivateKey
+var publicAddr string
+var walletBalance int64
+
+func ReadConsole() {
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("Welcome, sir!")
+	fmt.Print("> ")
+	readloop:
+	for scanner.Scan() {
+		input := scanner.Text()
+		switch input {
+		case "balance":
+			balance := balanceFor(publicAddr)
+			fmt.Println(balance)
+		case "exit":
+			writeWallet()
+			writeBlockChain()
+			break readloop
+		case "save":
+			writeWallet()
+			writeBlockChain()
+		}
+		//		fmt.Println(input)
+		fmt.Print("> ")
+	}
+
+	if scanner.Err() != nil {
+		// handle error.
+		fmt.Println("error", scanner.Err())
+	}
+}
+
+func InitWallet() (string, bool) {
+	err := os.MkdirAll(walletPath, os.ModePerm)
+	_, err = os.Stat(walletPath + walletFileName)
+	loaded := false
+	if os.IsNotExist(err) {
+		walletKey, _, publicAddr = createAddress()
+		writeWallet()
+	} else {
+		// file/dir with wallet path already exists
+		readWallet()
+		loaded = true
+	}
+	return publicAddr, loaded
+}
+
+func readWallet() {
+	//https://gobyexample.com/json
+	var dat map[string]interface{}
+	bytes, err := ioutil.ReadFile(walletPath + walletFileName)
+	err = json.Unmarshal(bytes, &dat)
+	if err != nil {
+		panic(err)
+	}
+	walletBalance = int64(dat["balance"].(float64))
+	walletKey = decodePrivateKey(dat["priv"].(string))
+}
+
+func writeWallet() {
+	privStr := encodePrivateKey(walletKey)
+	err := os.MkdirAll(walletPath, os.ModePerm)
+	f, err := os.Create(walletPath + walletFileName)
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+	defer f.Close()
+
+	//TODO: wallet struct
+	//https://gobyexample.com/json
+	//https://stackoverflow.com/questions/18526046/mapping-strings-to-multiple-types-for-json-objects
+	content := map[string]interface{}{"priv": privStr, "pubaddr": publicAddr, "balance": walletBalance}
+	contentB, _ := json.Marshal(content)
+	f.WriteString(string(contentB))
+}
+
 //balanceFor counts the unspent balance for given address (as count of unspent txouts)
+//address parameter given is the base58 encoded public key
 func balanceFor(address string) int {
 	balance := 0
 	for _, val := range unspentTxOuts {

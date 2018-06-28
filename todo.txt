@@ -1,0 +1,5 @@
+write blockchain to disk on exit/after x blocks, read on start if exists
+append to files
+binary formats
+block file index db
+peer connections

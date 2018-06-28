@@ -16,7 +16,12 @@ import (
 	"encoding/json"
 	"math"
 	"crypto/elliptic"
+	"os"
+	"io/ioutil"
 )
+
+var chainPath = "node/blocks/"
+var chainFileName = "blocks.json"
 
 var Curve = elliptic.P256()
 
@@ -303,4 +308,53 @@ func calculateChainDifficulty(chain []Block) float64 {
 		totalDiff += math.Pow((float64(chain[i].Difficulty)), 2)
 	}
 	return totalDiff
+}
+
+func BootstrapTestEnv(address string) {
+	createGenesisBlock(true)
+	cbTx := createCoinbaseTx(address)
+
+	txs := []Transaction{cbTx}
+	createBlock(txs, "My data", 0)
+}
+
+func writeBlockChain() {
+	chainJson := JsonChain(globalChain)
+	err := os.MkdirAll(chainPath, os.ModePerm)
+	f, err := os.Create(chainPath + chainFileName)
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+	defer f.Close()
+
+	f.WriteString(chainJson)
+}
+
+func InitBlockChain() bool {
+	err := os.MkdirAll(chainPath, os.ModePerm)
+	_, err = os.Stat(chainPath + chainFileName)
+	loaded := false
+	if os.IsNotExist(err) {
+		//TODO: start downloading chain
+	} else {
+		// file/dir with chain path already exists
+		readBlockChain()
+		loaded = true
+	}
+	return loaded
+}
+
+func readBlockChain() {
+	bytes, err := ioutil.ReadFile(chainPath + chainFileName)
+	if err != nil {
+		fmt.Println(err)
+	}
+	json.Unmarshal(bytes, &globalChain)
+	//a slice is passed as copy of header, so this does not copy the whole array
+	//https://stackoverflow.com/questions/39993688/are-golang-slices-pass-by-value#39993797
+	valid := validateChain(globalChain)
+	if !valid {
+		panic("Invalid chain loaded, exit")
+	}
 }
