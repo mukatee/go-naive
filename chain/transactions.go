@@ -1,43 +1,44 @@
 package chain
 
 import (
-	"strings"
-	"fmt"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
-	"crypto/ecdsa"
-	"math/big"
+	"fmt"
 	"github.com/akamensky/base58"
+	"log"
+	"math/big"
+	"strings"
 )
 
 var COINBASE_AMOUNT = 1000
 
 type TxOut struct {
-	Address string	//receiving public key
-	Amount int		//amount of coin units to send/receive
+	Address string //receiving public key
+	Amount  int    //amount of coin units to send/receive
 }
 
 type TxIn struct {
-	TxId      string	//id of the transaction inside which this TxIn should be found (in the list of TxOut)
-	TxIdx     int		//index of TxOut this refers to inside the transaction
+	TxId  string //id of the transaction inside which this TxIn should be found (in the list of TxOut)
+	TxIdx int    //index of TxOut this refers to inside the transaction
 }
 
 type UnspentTxOut struct {
-	TxId    string	//transaction id
-	TxIdx   int		//index of txout in transaction
-	Address string  //public key of owner
-	Amount  int		//amount coin units that was sent/received
+	TxId    string //transaction id
+	TxIdx   int    //index of txout in transaction
+	Address string //public key of owner
+	Amount  int    //amount coin units that was sent/received
 }
 
 //transaction is from a single person/entity
 //inputs from that entity use funds, outputs show how much and where
 //all the time there should be some list kept and updated based on this
 type Transaction struct {
-	Id string
-	Sender string //the address/public key of the sender
-	Signature string	//signature including all txin and txout. in this case we sign Transaction.Id since that already has all the TxIn and TxOut
-	TxIns []TxIn
-	TxOuts []TxOut
+	Id        string
+	Sender    string //the address/public key of the sender
+	Signature string //signature including all txin and txout. in this case we sign Transaction.Id since that already has all the TxIn and TxOut
+	TxIns     []TxIn
+	TxOuts    []TxOut
 }
 
 type ecdsaKeyElements struct {
@@ -46,6 +47,7 @@ type ecdsaKeyElements struct {
 
 //build a string with all transaction inputs and ouputs concatenated, hash it, and encode the hash into a hex-string
 func calculateTxId(tx Transaction) string {
+	log.Print("Calculating tx id (hash string)")
 	var strBuilder strings.Builder
 	for _, txIn := range tx.TxIns {
 		fmt.Fprintf(&strBuilder, "%d%d", txIn.TxIdx, txIn.TxIdx)
@@ -55,22 +57,27 @@ func calculateTxId(tx Transaction) string {
 	}
 	raw := strBuilder.String()
 	hash := sha256.Sum256([]byte(raw))
-	return hex.EncodeToString(hash[:])
+	id := hex.EncodeToString(hash[:])
+	log.Print("Calculated tx id (hash string):", id)
+	return id
 }
 
 //signData creates an ECDSA signature for given message (byte slice).
 //the created signature is returned as base 58 encoded
 func signData(privKey *ecdsa.PrivateKey, msg []byte) string {
+	log.Print("Creating ECDSA signature for data size ", len(msg))
 	esig := createSignature(msg, privKey)
 	rBytes := esig.R.Bytes()
 	sBytes := esig.S.Bytes()
 	whole := mergeTwoByteSlices(rBytes, sBytes)
-	return base58.Encode(whole)
+	signature := base58.Encode(whole)
+	log.Print("Signature created: ", signature)
+	return signature
 }
-
 
 //createCoinbaseTx build a new coinbase transaction and assigns it to the given address
 func createCoinbaseTx(address string) Transaction {
+	log.Print("Creating coinbase transaction for ", address)
 	var cbTx Transaction
 
 	var txIn TxIn
@@ -85,16 +92,19 @@ func createCoinbaseTx(address string) Transaction {
 	cbTx.Id = calculateTxId(cbTx)
 	cbTx.Signature = "coinbase"
 
+	log.Print("Coinbase tx created")
 	return cbTx
 }
 
 //sendCoins sends "count" number of coins to the "to" address, from the owner of given private key
 func sendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
 	from := encodePublicKey(privKey.PublicKey)
+	log.Print("Creating tx to send ", count, " coins from ", from, " to ", to)
 	//TODO: error handling
 	txIns, total := findTxInsFor(from, count)
 	txOuts := splitTxIns(from, to, count, total)
 	tx := createTx(privKey, txIns, txOuts)
+	log.Print("Send-tx created")
 	return tx
 }
 
@@ -102,12 +112,14 @@ func sendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
 //and where the transaction includes the given tXins and txOuts
 func createTx(privKey *ecdsa.PrivateKey, txIns []TxIn, txOuts []TxOut) Transaction {
 	pubKey := encodePublicKey(privKey.PublicKey)
-	tx := Transaction{"",  pubKey,"", txIns, txOuts}
+	log.Print("Creating tx from ", pubKey, " with ", len(txIns), " tx-ins, ", len(txOuts), " tx-outs")
+	tx := Transaction{"", pubKey, "", txIns, txOuts}
 
 	signTxIns(tx, privKey)
 
 	tx.Id = calculateTxId(tx)
 	tx.Signature = signData(privKey, []byte(tx.Id))
+	log.Print("Created tx and signed with signature: ", tx.Signature)
 	return tx
 }
 
@@ -126,6 +138,7 @@ func processTransaction(tx Transaction) {
 
 //consumeTxOut scans the list of unspent txouts to find one with matching transaction id and index, removes that when found
 func consumeTxOut(txId string, txIdx int) {
+	log.Print("Consuming tx-out with tx-id=", txId, ", tx-idx=", txIdx)
 	for idx, val := range unspentTxOuts {
 		if val.TxId == txId && val.TxIdx == txIdx {
 			//remove the matching unspend txout from the list of unspents
@@ -139,12 +152,13 @@ func consumeTxOut(txId string, txIdx int) {
 
 //createTxOut creates a txout from given parameters (pubKey is recipient) and adds it to list of unspent txouts
 func createTxOut(txId string, amount int, pubKey string, txIdx int) {
+	log.Print("Creating tx-out from: tx-in=", txId, ", amount=", amount, ", pubkey=", pubKey, ", tx-idx=", txIdx)
 	newUTXO := UnspentTxOut{txId, txIdx, pubKey, amount}
 	unspentTxOuts = append(unspentTxOuts, newUTXO)
 }
 
 //signTxIns verifies that the given transaction is valid, i.e. all txin exist as unspent txout for the spending user
-//TODO: check why is it called sign... when no signing appears to happen
+//TODO: check why did i call this sign... when no signing appears to happen -> rename this
 func signTxIns(tx Transaction, privKey *ecdsa.PrivateKey) bool {
 	//key from string https://stackoverflow.com/questions/48392334/how-to-sign-a-message-with-an-ecdsa-string-privatekey
 	myAddress := encodePublicKey(privKey.PublicKey)
@@ -153,7 +167,8 @@ func signTxIns(tx Transaction, privKey *ecdsa.PrivateKey) bool {
 		errorStatus := false
 		internalIdx := findUnspentTransaction(myAddress, val.TxId)
 		if internalIdx < 0 {
-			println("trying to spend a transaction that does not exist (as unspent..)")
+			//TODO: error logging
+			log.Print("Error: trying to spend a transaction that does not exist (as unspent..)")
 			errorStatus = true
 		}
 		if errorStatus {

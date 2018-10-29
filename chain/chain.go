@@ -3,21 +3,21 @@ package chain
 //bitcoin stores blocks on disk using leveldb:
 //https://bitcoin.stackexchange.com/questions/69628/what-data-structure-should-i-use-to-model-a-blockchain
 
-
 //https://stackoverflow.com/questions/16900938/how-to-place-golang-project-a-set-of-packages-to-github
 
 import (
-	"time"
-	"strconv"
-	"strings"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"encoding/json"
-	"math"
-	"crypto/elliptic"
-	"os"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"math"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var chainPath = "node/blocks/"
@@ -29,31 +29,37 @@ var Curve = elliptic.P256()
 var globalChain []Block
 
 type Block struct {
-	Index        int  //the block index in the chain
-	Hash         string //hash for this block
-	PreviousHash string //hash for previous block
-	Timestamp    time.Time //time when this block was created
-	Data         string //the data in this block. could be anything. not really needed since real data is transaction but for fun..
-	Transactions []Transaction  //the transactions in this block
-	Difficulty	 int //block difficulty when created
-	Nonce		 int //nonce used to find the hash for this block
+	Index        int           //the block index in the chain
+	Hash         string        //hash for this block
+	PreviousHash string        //hash for previous block
+	Timestamp    time.Time     //time when this block was created
+	Data         string        //the data in this block. could be anything. not really needed since real data is transaction but for fun..
+	Transactions []Transaction //the transactions in this block
+	Difficulty   int           //block difficulty when created
+	Nonce        int           //nonce used to find the hash for this block
 }
 
+//list of all transactions in the blockchain
 var allTransactions []Transaction
+
+//list of all unspent tx-outs in the blockchain
 var unspentTxOuts []UnspentTxOut
 
 func addTransaction(tx Transaction) {
+	log.Println("Adding transaction:", tx)
 	oldTx := findUnspentTransaction(tx.Sender, tx.Id)
 	if oldTx >= 0 {
-		print("transaction already exists, not adding: ", tx.Id)
+		log.Println("transaction already exists, not adding: ", tx.Id)
 		return
 	}
 	allTransactions = append(allTransactions, tx)
 	for _, txIn := range tx.TxIns {
+		log.Println("Deleteing tx output: ", txIn.TxId)
 		deleteUnspentTransaction(tx.Sender, txIn.TxId)
 	}
 	for idx, txOut := range tx.TxOuts {
 		utx := UnspentTxOut{tx.Id, idx, txOut.Address, txOut.Amount}
+		log.Println("Created unspent tx out:", utx)
 		unspentTxOuts = append(unspentTxOuts, utx)
 	}
 }
@@ -74,19 +80,26 @@ func findTransaction(txId string) (int, int) {
 //check that the blockchain has a given unspent transaction for the given public key (user)
 //returns the index of matching transaction in the list of that users unspent transactions or -1 if not found
 func findUnspentTransaction(pubKey string, txId string) int {
+	log.Println("Looking to find unspent tx, pubkey=:", pubKey, ", txid=", txId)
 	for idx, utx := range unspentTxOuts {
 		if utx.TxId == txId && utx.Address == pubKey {
+			log.Println("tx found at index:", idx)
 			return idx
 		}
 	}
+	log.Println("no matching tx found, returning -1")
 	return -1
 }
 
+//remove a transaction from the list of unspent transactions
 func deleteUnspentTransaction(pubKey string, txId string) bool {
+	log.Println("deleting tx, pubkey=", pubKey, ", txid=", txId)
 	idx := findUnspentTransaction(pubKey, txId)
 	if idx < 0 {
+		log.Println("no matching tx found")
 		return false
 	}
+	log.Println("matching tx found, removing it")
 
 	//val, _ := userTxMap[pubKey] //this would test for existtence of key
 	//https://stackoverflow.com/questions/21326109/why-are-lists-used-infrequently-in-go
@@ -109,6 +122,7 @@ func stringInSlice(a string, list []string) int {
 
 //calculate hash string for the given block
 func hash(block *Block) string {
+	log.Println("hashing block:", block)
 	indexStr := strconv.Itoa(block.Index)
 	timeStr := strconv.FormatUint(uint64(block.Timestamp.Unix()), 16) //base 16 output
 	nonceStr := strconv.Itoa(block.Nonce)
@@ -117,22 +131,26 @@ func hash(block *Block) string {
 	txStr := string(txBytes)
 	//this joins all the block elements to one long string with all elements appended after another, to produce the hash
 	blockStr := strings.Join([]string{indexStr, block.PreviousHash, timeStr, diffStr, block.Data, txStr, nonceStr}, " ")
-//	print(data)
+	//	print(data)
 	bytes := []byte(blockStr)
 	hash := sha256.Sum256(bytes)
 	s := hex.EncodeToString(hash[:]) //encode the Hash as a hex-string. the [:] is slicing to match datatypes in args
+	log.Println("Created hash:", s)
 	return s
 }
 
 //create genesis block, the first one on the chain to bootstrap the chain
 func createGenesisBlock(addToChain bool) Block {
+	log.Println("Creating genesis block")
 	genesisTime, _ := time.Parse("Jan 2 15:04 2006", "Mar 15 19:00 2018")
-	block := Block{1, "", "0", genesisTime, "Teemu oli täällä", nil,1, 1}
+	block := Block{1, "", "0", genesisTime, "Teemu oli täällä", nil, 1, 1}
 	hash := hash(&block)
 	block.Hash = hash
 	if addToChain {
+		log.Println("Adding genesis block to chain")
 		globalChain = append(globalChain, block)
 	}
+	log.Println("Genesis block creation finished:", block)
 	return block
 }
 
@@ -167,42 +185,47 @@ func validateChain(chain []Block) bool {
 		thisIndex := chain[i].Index
 		prevIndex := chain[i-1].Index + 1
 		if thisIndex != prevIndex {
-			println("Index issue at " + strconv.Itoa(i) + " - " + strconv.Itoa(thisIndex) + " vs " + strconv.Itoa(prevIndex))
+			log.Println("Index issue at " + strconv.Itoa(i) + " - " + strconv.Itoa(thisIndex) + " vs " + strconv.Itoa(prevIndex))
 			return false
 		}
 		//validate that previous hash stored in this block matches the hash stored for previous block in chain
 		prevHash1 := chain[i].PreviousHash
 		prevHash2 := chain[i-1].Hash
 		if prevHash1 != prevHash2 {
-			println("Hash mismatch at " + strconv.Itoa(i) + " - " + prevHash1 + " vs " + prevHash2)
+			log.Println("Hash mismatch at " + strconv.Itoa(i) + " - " + prevHash1 + " vs " + prevHash2)
 			return false
 		}
 		//validate the hash stored in this block is a valid hash for this block
 		hash := hash(&chain[i])
 		if hash != chain[i].Hash {
-			println("Hash mismatch with itself at index", i)
+			log.Println("Hash mismatch with itself at index", i)
 			return false
 		}
 	}
-	println("chain validated")
+	log.Println("chain validated")
 	return true
 }
 
 //create a block from the given parameters, and find a nonce to produce a hash matching the difficulty
 //finally, append new block to current chain
 func createBlock(txs []Transaction, blockData string, difficulty int) Block {
+	log.Println("Creating new block, tx count = ", len(txs), "difficult=", difficulty, "block-data=", blockData)
 	chainLength := len(globalChain)
+	log.Println("current chain len:", chainLength)
 	previous := globalChain[chainLength-1]
 	index := previous.Index + 1
 	timestamp := time.Now().UTC()
 	nonce := 0
 	newBlock := Block{index, "", previous.Hash, timestamp, blockData, txs, difficulty, nonce}
+	log.Println("starting pow for block template:", newBlock)
 	for {
 		hash := hash(&newBlock)
 		newBlock.Hash = hash
+		//TODO: exit/update if peer finds hash
 		if verifyHashVsDifficulty(hash, difficulty) {
 			addBlock(newBlock)
-//			globalChain = append(globalChain, newBlock)
+			log.Println("found pow hash:", hash)
+			//			globalChain = append(globalChain, newBlock)
 			return newBlock
 		}
 		nonce++
@@ -213,9 +236,11 @@ func createBlock(txs []Transaction, blockData string, difficulty int) Block {
 //add a new block to the existing chain
 func addBlock(block Block) {
 	chainLength := len(globalChain)
+	log.Println("adding block to chain. current height=", chainLength, ", block=", block)
 	previousBlock := globalChain[chainLength-1]
 	block.PreviousHash = previousBlock.Hash
 	globalChain = append(globalChain, block)
+	log.Println("Adding " + strconv.Itoa(len(block.Transactions)) + " transactions from block.")
 	for _, tx := range block.Transactions {
 		addTransaction(tx)
 	}
@@ -235,6 +260,7 @@ func printChain(chain []Block) {
 
 //turn the given chain into a json description, to copy to other location
 func JsonChain(chain []Block) string {
+	log.Println("Converting chain into JSON")
 	bytes, _ := json.Marshal(chain)
 	json := string(bytes)
 	return json
@@ -242,6 +268,7 @@ func JsonChain(chain []Block) string {
 
 //turn the given block into a json description, to copy to other location
 func JsonBlock(block Block) string {
+	log.Println("Converting block into JSON")
 	bytes, _ := json.Marshal(block)
 	json := string(bytes)
 	return json
@@ -263,18 +290,24 @@ func marshallDemarshallChain(chain []Block) {
 	printChainJSON(chain2)
 }
 
-
 //validate given chain, compare to current, and if new is longer replace current chain with new
 //returns true if new chain is selected
 //matches the first version of blockchain from naivecoin tutorial:
 //https://lhartikk.github.io/jekyll/update/2017/07/14/chapter1.html
 func takeLongestChain(newChain []Block) bool {
+	newLength := len(newChain)
+	oldLength := len(globalChain)
+	log.Println("Comparing new chain vs old chain length:", newLength, " vs. ", oldLength)
 	fine := validateChain(newChain)
 	if !fine {
+		log.Println("New chain failed to validate, dropping it.")
 		return false
 	}
-	if len(newChain) > len(globalChain) {
+	if newLength > oldLength {
+		log.Println("New chain longer, replacing old.")
 		globalChain = newChain
+	} else {
+		log.Println("New chain not longer, keeping old.")
 	}
 	return true
 }
@@ -286,7 +319,7 @@ func takeLongestChain(newChain []Block) bool {
 func takeMostDifficultChain(newChain []Block) bool {
 	fine := validateChain(newChain)
 	if !fine {
-		println("chain validation failed, ignoring diff compare")
+		log.Println("New chain validation failed, dropping it.")
 		return false
 	}
 
@@ -294,34 +327,41 @@ func takeMostDifficultChain(newChain []Block) bool {
 	totalDiff2 := calculateChainDifficulty(newChain)
 
 	if totalDiff2 < totalDiff1 {
-		println("not switching chain")
+		log.Println("not switching chain")
 		return false
 	}
-	println("switching chain to more difficult")
+	log.Println("switching chain to more difficult")
 	globalChain = newChain
 	return true
 }
 
 func calculateChainDifficulty(chain []Block) float64 {
 	totalDiff := 0.0
-	for i := 0 ; i < len(chain) ; i ++ {
+	for i := 0; i < len(chain); i++ {
 		totalDiff += math.Pow((float64(chain[i].Difficulty)), 2)
 	}
+	log.Println("Calculated chain difficulty:", totalDiff)
 	return totalDiff
 }
 
+//create a chain with a single coinbase transaction to given address
 func BootstrapTestEnv(address string) {
+	log.Println("Bootstrapping test env.")
 	createGenesisBlock(true)
 	cbTx := createCoinbaseTx(address)
 
 	txs := []Transaction{cbTx}
 	createBlock(txs, "My data", 0)
+	log.Println("Test env bootstrapped")
 }
 
 func writeBlockChain() {
+	log.Println("Starting to write blockchain to disk")
 	chainJson := JsonChain(globalChain)
 	err := os.MkdirAll(chainPath, os.ModePerm)
+	log.Println("File path created/found," + chainPath)
 	f, err := os.Create(chainPath + chainFileName)
+	log.Println("Done OK, now to write..," + chainPath)
 	if err != nil {
 		fmt.Println("error", err)
 		return
@@ -345,11 +385,16 @@ func InitBlockChain() bool {
 	return loaded
 }
 
+//readBlockChain() reads the chain from disk.
 func readBlockChain() {
-	bytes, err := ioutil.ReadFile(chainPath + chainFileName)
+	fullPath := chainPath + chainFileName
+	log.Println("Reading blockchain from disk, path = " + fullPath)
+	bytes, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		fmt.Println(err)
+		//TODO: panic?
 	}
+	//convert bytes in file to golang objecs in the chain
 	json.Unmarshal(bytes, &globalChain)
 	//a slice is passed as copy of header, so this does not copy the whole array
 	//https://stackoverflow.com/questions/39993688/are-golang-slices-pass-by-value#39993797

@@ -3,3 +3,10 @@ append to files
 binary formats
 block file index db
 peer connections
+-master/seed nodes
+-request new addresses from seeds
+-time to live, how long till response
+-registration + version number + reply
+-data exchange protocol
+
+
