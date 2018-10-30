@@ -1,14 +1,14 @@
 package chain
 
 import (
-	"math/big"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"math/big"
 
-	"github.com/akamensky/base58"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"crypto/sha256"
+	"github.com/akamensky/base58"
 )
 
 //ecdsaSignature holds the two bigints required to represent (sign/verify) an ECDSA signature
@@ -26,7 +26,7 @@ func createAddress() (*ecdsa.PrivateKey, *ecdsa.PublicKey, string) {
 }
 
 //createSignature hashes the given bytes and signs the resulting hash with the given private key to produce signature
-func createSignature(msg []byte, priv *ecdsa.PrivateKey) (ecdsaSignature) {
+func createSignature(msg []byte, priv *ecdsa.PrivateKey) ecdsaSignature {
 	var esig ecdsaSignature
 	digest := sha256.Sum256(msg)
 	r, s, _ := ecdsa.Sign(rand.Reader, priv, digest[:])
@@ -48,10 +48,15 @@ func encodePrivateKey(privKey *ecdsa.PrivateKey) string {
 
 //decodePrivateKey decodes the private key from given base58 encoded string
 func decodePrivateKey(str string) *ecdsa.PrivateKey {
-	//TODO: curve asetus jostain vakiosta
 	privKey := new(ecdsa.PrivateKey)
 	privKey.D = b58ToBigInt(str)
 	privKey.Curve = Curve
+	//PublicKey is anonymous nested struct, so its fields can be directly accessed
+	//so no need to separately define access
+	//https://golangbot.com/structs/
+	//	pubKey := &privKey.PublicKey
+	//	pubKey.Curve = Curve
+	privKey.X, privKey.Y = Curve.ScalarBaseMult(privKey.D.Bytes())
 	return privKey
 }
 
@@ -83,7 +88,7 @@ func mergeTwoByteSlices(slice1 []byte, slice2 []byte) []byte {
 func splitTwoByteSlices(whole []byte) ([]byte, []byte) {
 	//int(byte) seems to always produce a positive valued integer (-1 = 255). so I just trust this is ok for 1 byte length
 	size1 := int(whole[0])
-	slice1End := 1+size1
+	slice1End := 1 + size1
 	//if want big.int: https://stackoverflow.com/questions/24757814/golang-convert-byte-array-to-big-int
 	slice1 := whole[1:slice1End]
 	slice2 := whole[slice1End+1:]
@@ -137,7 +142,7 @@ func HexToPublicKey(xHex string, yHex string) *ecdsa.PublicKey {
 }
 
 //hexToPrivateKey converts a hex-encoded string into a golang private key structure
-func hexToPrivateKey(hexStr string)  *ecdsa.PrivateKey {
+func hexToPrivateKey(hexStr string) *ecdsa.PrivateKey {
 	bytes, err := hex.DecodeString(hexStr)
 	print(err)
 

@@ -67,16 +67,23 @@ func InitWallet() (string, bool) {
 
 func readWallet() {
 	//https://gobyexample.com/json
-	var dat map[string]interface{}
+	var data map[string]interface{}
 	fullPath := walletPath + walletFileName
 	log.Print("Reading wallet from path:" + fullPath)
 	bytes, err := ioutil.ReadFile(fullPath)
-	err = json.Unmarshal(bytes, &dat)
+	err = json.Unmarshal(bytes, &data)
 	if err != nil {
 		panic(err)
 	}
-	walletBalance = int64(dat["balance"].(float64))
-	walletKey = decodePrivateKey(dat["priv"].(string))
+	//TODO: is this intended to be int or float?
+	walletBalance = int64(data["balance"].(float64))
+	//TODO: why storing empty private key leads to this weirdness?
+	//println("priv:", data["priv"].(string))
+	walletKey = decodePrivateKey(data["priv"].(string))
+	//println("wallet key:", walletKey.D.String())
+	//println("", walletKey.PublicKey)
+	pubStr := encodePublicKey(walletKey.PublicKey)
+	log.Println("wallet public key: ", pubStr)
 }
 
 func writeWallet() {
