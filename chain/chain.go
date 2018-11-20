@@ -67,6 +67,8 @@ func addTransaction(tx Transaction) {
 //check that the blockchain has a transaction with the given id
 //returns the index of matching (block, transaction) in the blockchain or -1, -1 if not found
 func findTransaction(txId string) (int, int) {
+	print("looking for txid:", txId)
+	os.Exit(1)
 	for bIdx, block := range globalChain {
 		for tIdx, tx := range block.Transactions {
 			if tx.Id == txId {
@@ -143,7 +145,10 @@ func hash(block *Block) string {
 func createGenesisBlock(addToChain bool) Block {
 	log.Println("Creating genesis block")
 	genesisTime, _ := time.Parse("Jan 2 15:04 2006", "Mar 15 19:00 2018")
-	block := Block{1, "", "0", genesisTime, "Teemu oli täällä", nil, 1, 1}
+	genesisAddress := "3uGQcE7wPMYoJDGStgWMkm6qj7u83TDmcvXUYVoVeDq4sYRMZXisB6vxMwQWCMPe1eX5rGPgoJ9oyYoFNGwpqNcPU"
+	cbTx := createCoinbaseTx(genesisAddress)
+	txs := []Transaction{cbTx}
+	block := Block{1, "", "0", genesisTime, "Teemu oli täällä", txs, 1, 1}
 	hash := hash(&block)
 	block.Hash = hash
 	if addToChain {
@@ -249,6 +254,18 @@ func addBlock(block Block) {
 
 func printBlock(block Block) {
 	fmt.Printf("%d:%s %s %d %s\n", block.Index, block.Hash, block.Timestamp.String(), block.Difficulty, block.Data)
+	//txStrs := make(map[string]int)
+	for _, tx := range block.Transactions {
+		for _, txIn := range tx.TxIns {
+			blockIdx, txIdx := findTransaction(txIn.TxId)
+			fmt.Printf("block id: %d, txid: %d", blockIdx, txIdx)
+			txOut := globalChain[blockIdx].Transactions[txIdx]
+			fmt.Printf("in from %s: (%s, %d)", txOut.Sender, txIn.TxId)
+		}
+		for _, txOut := range tx.TxOuts {
+			fmt.Printf("out to  %s: %d", txOut.Address, txOut.Amount)
+		}
+	}
 	//	println()
 }
 
@@ -348,8 +365,8 @@ func calculateChainDifficulty(chain []Block) float64 {
 func BootstrapTestEnv(address string) {
 	log.Println("Bootstrapping test env.")
 	createGenesisBlock(true)
-	cbTx := createCoinbaseTx(address)
 
+	cbTx := createCoinbaseTx(address)
 	txs := []Transaction{cbTx}
 	createBlock(txs, "My data", 0)
 	log.Println("Test env bootstrapped")
@@ -359,9 +376,9 @@ func writeBlockChain() {
 	log.Println("Starting to write blockchain to disk")
 	chainJson := JsonChain(globalChain)
 	err := os.MkdirAll(chainPath, os.ModePerm)
-	log.Println("File path created/found," + chainPath)
+	log.Println("File path created/found, " + chainPath)
 	f, err := os.Create(chainPath + chainFileName)
-	log.Println("Done OK, now to write..," + chainPath)
+	log.Println("Done OK, now to write.., " + chainPath)
 	if err != nil {
 		fmt.Println("error", err)
 		return
@@ -376,6 +393,7 @@ func InitBlockChain() bool {
 	_, err = os.Stat(chainPath + chainFileName)
 	loaded := false
 	if os.IsNotExist(err) {
+		log.Println("No blockchain file found.")
 		//TODO: start downloading chain
 	} else {
 		// file/dir with chain path already exists

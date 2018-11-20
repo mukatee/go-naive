@@ -20,9 +20,9 @@ type ecdsaSignature struct {
 //together these form an address for the coin
 func createAddress() (*ecdsa.PrivateKey, *ecdsa.PublicKey, string) {
 	privKey, _ := ecdsa.GenerateKey(Curve, rand.Reader)
-	pubKey := privKey.PublicKey
+	pubKey := &privKey.PublicKey
 	address := encodePublicKey(pubKey)
-	return privKey, &pubKey, address
+	return privKey, pubKey, address
 }
 
 //createSignature hashes the given bytes and signs the resulting hash with the given private key to produce signature
@@ -62,7 +62,7 @@ func decodePrivateKey(str string) *ecdsa.PrivateKey {
 
 //encodePublicKey takes the ecdsa public key, encodes its two big integer parts,
 //and merges them to a single base58 encoded string
-func encodePublicKey(pubKey ecdsa.PublicKey) string {
+func encodePublicKey(pubKey *ecdsa.PublicKey) string {
 	xBytes := pubKey.X.Bytes()
 	yBytes := pubKey.Y.Bytes()
 	whole := mergeTwoByteSlices(xBytes, yBytes)

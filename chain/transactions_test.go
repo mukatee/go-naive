@@ -1,17 +1,17 @@
 package chain
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestCoinbaseOnly(t *testing.T) {
 	createGenesisBlock(true)
 
 	privKey, _ := ecdsa.GenerateKey(Curve, rand.Reader)
-	pubKey := privKey.PublicKey
+	pubKey := &privKey.PublicKey
 	address := encodePublicKey(pubKey)
 	cbTx := createCoinbaseTx(address)
 	txs := []Transaction{cbTx}
@@ -36,15 +36,15 @@ func TestCoinbaseAndUsers(t *testing.T) {
 
 	u1Tx := sendCoins(privKey1, address2, 50)
 
-/*	txIn := TxIn{cbTx.Id, 0}
-	txIns := []TxIn{txIn}
+	/*	txIn := TxIn{cbTx.Id, 0}
+		txIns := []TxIn{txIn}
 
-	txOut1 := TxOut{address2, 50}
-	txOut2 := TxOut{address1, 950}
-	txOuts := []TxOut{txOut1, txOut2}
+		txOut1 := TxOut{address2, 50}
+		txOut2 := TxOut{address1, 950}
+		txOuts := []TxOut{txOut1, txOut2}
 
 
-	u1Tx := createTx(privKey1, txIns, txOuts)*/
+		u1Tx := createTx(privKey1, txIns, txOuts)*/
 
 	txs = []Transaction{u1Tx}
 	createBlock(txs, "My data", 0)

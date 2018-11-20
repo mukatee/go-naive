@@ -19,7 +19,7 @@ type TxOut struct {
 }
 
 type TxIn struct {
-	TxId  string //id of the transaction inside which this TxIn should be found (in the list of TxOut)
+	TxId  string //id of the transaction inside which this TxIn should be found
 	TxIdx int    //index of TxOut this refers to inside the transaction
 }
 
@@ -80,7 +80,7 @@ func createCoinbaseTx(address string) Transaction {
 	log.Print("Creating coinbase transaction for ", address)
 	var cbTx Transaction
 
-	var txIn TxIn
+	var txIn TxIn //TODO: this creates empty txin, should just remove the whole txin
 	txIn.TxIdx = len(globalChain)
 	cbTx.TxIns = append(cbTx.TxIns, txIn)
 
@@ -98,7 +98,7 @@ func createCoinbaseTx(address string) Transaction {
 
 //sendCoins sends "count" number of coins to the "to" address, from the owner of given private key
 func sendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
-	from := encodePublicKey(privKey.PublicKey)
+	from := encodePublicKey(&privKey.PublicKey)
 	log.Print("Creating tx to send ", count, " coins from ", from, " to ", to)
 	//TODO: error handling
 	txIns, total := findTxInsFor(from, count)
@@ -111,7 +111,7 @@ func sendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
 //createTx builds a new transaction where the sender is identified by the given private key,
 //and where the transaction includes the given tXins and txOuts
 func createTx(privKey *ecdsa.PrivateKey, txIns []TxIn, txOuts []TxOut) Transaction {
-	pubKey := encodePublicKey(privKey.PublicKey)
+	pubKey := encodePublicKey(&privKey.PublicKey)
 	log.Print("Creating tx from ", pubKey, " with ", len(txIns), " tx-ins, ", len(txOuts), " tx-outs")
 	tx := Transaction{"", pubKey, "", txIns, txOuts}
 
@@ -161,7 +161,7 @@ func createTxOut(txId string, amount int, pubKey string, txIdx int) {
 //TODO: check why did i call this sign... when no signing appears to happen -> rename this
 func signTxIns(tx Transaction, privKey *ecdsa.PrivateKey) bool {
 	//key from string https://stackoverflow.com/questions/48392334/how-to-sign-a-message-with-an-ecdsa-string-privatekey
-	myAddress := encodePublicKey(privKey.PublicKey)
+	myAddress := encodePublicKey(&privKey.PublicKey)
 	//first param from range is index, second is the value
 	for _, val := range tx.TxIns {
 		errorStatus := false

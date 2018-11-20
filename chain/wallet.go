@@ -37,7 +37,31 @@ readloop:
 			writeBlockChain()
 		case "send":
 			walletSend()
+		case "show address":
+			log.Print("Wallet address: ")
+			log.Print("        pubkey: ", encodePublicKey(&walletKey.PublicKey))
+			log.Print("       privkey: ", encodePrivateKey(walletKey))
+		case "create address":
+			privKey, pubKey, addressStr := createAddress()
+			privStr := encodePrivateKey(privKey)
+			pubStr := encodePublicKey(pubKey)
+			log.Print("Created address: ", addressStr)
+			log.Print("Created pubkey: ", pubStr)
+			log.Print("Created priveky: ", privStr)
+		case "address":
+			println(publicAddr)
+		case "private key":
+			print(encodePrivateKey(walletKey))
+		case "blocks":
+			printChain(globalChain)
+		case "mine block":
+			tx := createCoinbaseTx(publicAddr)
+			txs := []Transaction{tx}
+			createBlock(txs, "Hello", 0)
+		default:
+			println("Unknown command: ", input)
 		}
+
 		//		fmt.Println(input)
 		fmt.Print("> ")
 	}
@@ -55,6 +79,7 @@ func InitWallet() (string, bool) {
 	if os.IsNotExist(err) {
 		log.Print("No wallet file found. Creating new.")
 		walletKey, _, publicAddr = createAddress()
+		log.Println("Created address: ", publicAddr)
 		writeWallet()
 	} else {
 		// file/dir with wallet path already exists
@@ -82,8 +107,8 @@ func readWallet() {
 	walletKey = decodePrivateKey(data["priv"].(string))
 	//println("wallet key:", walletKey.D.String())
 	//println("", walletKey.PublicKey)
-	pubStr := encodePublicKey(walletKey.PublicKey)
-	log.Println("wallet public key: ", pubStr)
+	publicAddr = encodePublicKey(&walletKey.PublicKey)
+	log.Println("wallet public key: ", publicAddr)
 }
 
 func writeWallet() {
