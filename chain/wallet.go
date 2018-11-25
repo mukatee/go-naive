@@ -21,7 +21,7 @@ func ReadConsole() {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Println("Welcome, sir!")
 	fmt.Print("> ")
-readloop:
+
 	for scanner.Scan() {
 		input := scanner.Text()
 		switch input {
@@ -31,7 +31,8 @@ readloop:
 		case "exit":
 			writeWallet()
 			writeBlockChain()
-			break readloop
+			os.Exit(1)
+			//break readloop
 		case "save":
 			writeWallet()
 			writeBlockChain()

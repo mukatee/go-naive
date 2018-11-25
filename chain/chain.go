@@ -68,7 +68,6 @@ func addTransaction(tx Transaction) {
 //returns the index of matching (block, transaction) in the blockchain or -1, -1 if not found
 func findTransaction(txId string) (int, int) {
 	print("looking for txid:", txId)
-	os.Exit(1)
 	for bIdx, block := range globalChain {
 		for tIdx, tx := range block.Transactions {
 			if tx.Id == txId {
@@ -253,17 +252,22 @@ func addBlock(block Block) {
 }
 
 func printBlock(block Block) {
-	fmt.Printf("%d:%s %s %d %s\n", block.Index, block.Hash, block.Timestamp.String(), block.Difficulty, block.Data)
+	fmt.Printf("block %d:%s %s %d %s\n", block.Index, block.Hash, block.Timestamp.String(), block.Difficulty, block.Data)
 	//txStrs := make(map[string]int)
-	for _, tx := range block.Transactions {
-		for _, txIn := range tx.TxIns {
-			blockIdx, txIdx := findTransaction(txIn.TxId)
-			fmt.Printf("block id: %d, txid: %d", blockIdx, txIdx)
-			txOut := globalChain[blockIdx].Transactions[txIdx]
-			fmt.Printf("in from %s: (%s, %d)", txOut.Sender, txIn.TxId)
+	for txIdx, tx := range block.Transactions {
+		fmt.Printf("-tx: %d\n", txIdx)
+		if len(tx.TxIns) == 0 {
+			fmt.Print("--No txIn found, assuming coinbase tx.\n")
+		} else {
+			for _, txIn := range tx.TxIns {
+				blockIdx, txIdx := findTransaction(txIn.TxId)
+				fmt.Printf("--txin: block id = %d, txid = %d\n", blockIdx, txIdx)
+				txOut := globalChain[blockIdx].Transactions[txIdx]
+				fmt.Printf("---in from %s: (%s, %d)\n", txOut.Sender, txIn.TxId)
+			}
 		}
 		for _, txOut := range tx.TxOuts {
-			fmt.Printf("out to  %s: %d", txOut.Address, txOut.Amount)
+			fmt.Printf("--out to %s: %d\n", txOut.Address, txOut.Amount)
 		}
 	}
 	//	println()

@@ -80,9 +80,7 @@ func createCoinbaseTx(address string) Transaction {
 	log.Print("Creating coinbase transaction for ", address)
 	var cbTx Transaction
 
-	var txIn TxIn //TODO: this creates empty txin, should just remove the whole txin
-	txIn.TxIdx = len(globalChain)
-	cbTx.TxIns = append(cbTx.TxIns, txIn)
+	//no txin for coinbase tx
 
 	var txOut TxOut
 	txOut.Amount = COINBASE_AMOUNT
