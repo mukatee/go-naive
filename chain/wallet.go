@@ -140,6 +140,7 @@ func walletSend() {
 //address parameter given is the base58 encoded public key
 func balanceFor(address string) int {
 	log.Print("Calculating balance for address:" + address)
+	log.Printf("Number of unspent tx-out: %d", len(unspentTxOuts))
 	balance := 0
 	for _, val := range unspentTxOuts {
 		if val.Address == address {

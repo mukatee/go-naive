@@ -153,6 +153,7 @@ func createGenesisBlock(addToChain bool) Block {
 	if addToChain {
 		log.Println("Adding genesis block to chain")
 		globalChain = append(globalChain, block)
+		addTransaction(cbTx)
 	}
 	log.Println("Genesis block creation finished:", block)
 	return block
@@ -407,6 +408,7 @@ func InitBlockChain() bool {
 	return loaded
 }
 
+//TODO: test to read and write blockchain, validate balance and unspent-tx etc counts after
 //readBlockChain() reads the chain from disk.
 func readBlockChain() {
 	fullPath := chainPath + chainFileName
@@ -423,5 +425,10 @@ func readBlockChain() {
 	valid := validateChain(globalChain)
 	if !valid {
 		panic("Invalid chain loaded, exit")
+	}
+	for _, block := range globalChain {
+		for _, tx := range block.Transactions {
+			addTransaction(tx)
+		}
 	}
 }
