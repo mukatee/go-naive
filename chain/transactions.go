@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/akamensky/base58"
+	"github.com/mukatee/go-naive/cryptoff"
 	"log"
 	"math/big"
 	"strings"
@@ -66,17 +67,17 @@ func calculateTxId(tx Transaction) string {
 //the created signature is returned as base 58 encoded
 func signData(privKey *ecdsa.PrivateKey, msg []byte) string {
 	log.Print("Creating ECDSA signature for data size ", len(msg))
-	esig := createSignature(msg, privKey)
+	esig := cryptoff.CreateSignature(msg, privKey)
 	rBytes := esig.R.Bytes()
 	sBytes := esig.S.Bytes()
-	whole := mergeTwoByteSlices(rBytes, sBytes)
+	whole := cryptoff.MergeTwoByteSlices(rBytes, sBytes)
 	signature := base58.Encode(whole)
 	log.Print("Signature created: ", signature)
 	return signature
 }
 
 //createCoinbaseTx build a new coinbase transaction and assigns it to the given address
-func createCoinbaseTx(address string) Transaction {
+func CreateCoinbaseTx(address string) Transaction {
 	log.Print("Creating coinbase transaction for ", address)
 	var cbTx Transaction
 
@@ -96,11 +97,11 @@ func createCoinbaseTx(address string) Transaction {
 
 //sendCoins sends "count" number of coins to the "to" address, from the owner of given private key
 func sendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
-	from := encodePublicKey(&privKey.PublicKey)
+	from := cryptoff.EncodePublicKey(&privKey.PublicKey)
 	log.Print("Creating tx to send ", count, " coins from ", from, " to ", to)
 	//TODO: error handling
 	txIns, total := findTxInsFor(from, count)
-	txOuts := splitTxIns(from, to, count, total)
+	txOuts := SplitTxIns(from, to, count, total)
 	tx := createTx(privKey, txIns, txOuts)
 	log.Print("Send-tx created")
 	return tx
@@ -109,7 +110,7 @@ func sendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
 //createTx builds a new transaction where the sender is identified by the given private key,
 //and where the transaction includes the given tXins and txOuts
 func createTx(privKey *ecdsa.PrivateKey, txIns []TxIn, txOuts []TxOut) Transaction {
-	pubKey := encodePublicKey(&privKey.PublicKey)
+	pubKey := cryptoff.EncodePublicKey(&privKey.PublicKey)
 	log.Print("Creating tx from ", pubKey, " with ", len(txIns), " tx-ins, ", len(txOuts), " tx-outs")
 	tx := Transaction{"", pubKey, "", txIns, txOuts}
 
@@ -159,7 +160,7 @@ func createTxOut(txId string, amount int, pubKey string, txIdx int) {
 //TODO: check why did i call this sign... when no signing appears to happen -> rename this
 func signTxIns(tx Transaction, privKey *ecdsa.PrivateKey) bool {
 	//key from string https://stackoverflow.com/questions/48392334/how-to-sign-a-message-with-an-ecdsa-string-privatekey
-	myAddress := encodePublicKey(&privKey.PublicKey)
+	myAddress := cryptoff.EncodePublicKey(&privKey.PublicKey)
 	//first param from range is index, second is the value
 	for _, val := range tx.TxIns {
 		errorStatus := false
@@ -190,7 +191,7 @@ func hexToPublicKey(xHex string, yHex string) *ecdsa.PublicKey {
 	pub.X = x
 	pub.Y = y
 
-	pub.Curve = Curve
+	pub.Curve = cryptoff.Curve
 
 	return pub
 }

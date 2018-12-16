@@ -17,9 +17,9 @@ func verifyHashVsDifficulty(hash string, difficulty int) bool {
 
 //getDifficulty calculates the current difficulty based on timestamps
 func getDifficulty() int {
-	prevBlock := globalChain[len(globalChain)-1]
+	prevBlock := GlobalChain[len(GlobalChain)-1]
 	if prevBlock.Index%DIFFICULTY_ADJUSTMENT_INTERVAL == 0 && prevBlock.Index != 0 {
-		return getAdjustedDifficulty(prevBlock, globalChain)
+		return getAdjustedDifficulty(prevBlock, GlobalChain)
 	} else {
 		return prevBlock.Difficulty
 	}

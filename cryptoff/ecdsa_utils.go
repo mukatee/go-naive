@@ -1,15 +1,17 @@
-package chain
+package cryptoff
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"math/big"
-
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"github.com/akamensky/base58"
+	"math/big"
 )
+
+var Curve = elliptic.P256()
 
 //ecdsaSignature holds the two bigints required to represent (sign/verify) an ECDSA signature
 type ecdsaSignature struct {
@@ -18,15 +20,15 @@ type ecdsaSignature struct {
 
 //createAddress creates a new private and public key, and encodes the public key as string
 //together these form an address for the coin
-func createAddress() (*ecdsa.PrivateKey, *ecdsa.PublicKey, string) {
+func CreateAddress() (*ecdsa.PrivateKey, *ecdsa.PublicKey, string) {
 	privKey, _ := ecdsa.GenerateKey(Curve, rand.Reader)
 	pubKey := &privKey.PublicKey
-	address := encodePublicKey(pubKey)
+	address := EncodePublicKey(pubKey)
 	return privKey, pubKey, address
 }
 
 //createSignature hashes the given bytes and signs the resulting hash with the given private key to produce signature
-func createSignature(msg []byte, priv *ecdsa.PrivateKey) ecdsaSignature {
+func CreateSignature(msg []byte, priv *ecdsa.PrivateKey) ecdsaSignature {
 	var esig ecdsaSignature
 	digest := sha256.Sum256(msg)
 	r, s, _ := ecdsa.Sign(rand.Reader, priv, digest[:])
@@ -42,12 +44,12 @@ func verifyESig(pub *ecdsa.PublicKey, msg []byte, esig ecdsaSignature) bool {
 }
 
 //encodePrivateKey base58 encodes the private key for storage/presentation
-func encodePrivateKey(privKey *ecdsa.PrivateKey) string {
+func EncodePrivateKey(privKey *ecdsa.PrivateKey) string {
 	return base58.Encode(privKey.D.Bytes())
 }
 
 //decodePrivateKey decodes the private key from given base58 encoded string
-func decodePrivateKey(str string) *ecdsa.PrivateKey {
+func DecodePrivateKey(str string) *ecdsa.PrivateKey {
 	privKey := new(ecdsa.PrivateKey)
 	privKey.D = b58ToBigInt(str)
 	privKey.Curve = Curve
@@ -62,10 +64,10 @@ func decodePrivateKey(str string) *ecdsa.PrivateKey {
 
 //encodePublicKey takes the ecdsa public key, encodes its two big integer parts,
 //and merges them to a single base58 encoded string
-func encodePublicKey(pubKey *ecdsa.PublicKey) string {
+func EncodePublicKey(pubKey *ecdsa.PublicKey) string {
 	xBytes := pubKey.X.Bytes()
 	yBytes := pubKey.Y.Bytes()
-	whole := mergeTwoByteSlices(xBytes, yBytes)
+	whole := MergeTwoByteSlices(xBytes, yBytes)
 	return base58.Encode(whole)
 }
 
@@ -73,7 +75,7 @@ func encodePublicKey(pubKey *ecdsa.PublicKey) string {
 //the new slice will start with single byte for the length of first slice in new slice.
 //this is followed by the first slice, which is followed by second slice
 //so newslice = [slice1length][slice1][slice2]
-func mergeTwoByteSlices(slice1 []byte, slice2 []byte) []byte {
+func MergeTwoByteSlices(slice1 []byte, slice2 []byte) []byte {
 	s1Len := len(slice1)
 	s2Len := len(slice2)
 	finalBytes := make([]byte, 1+s1Len+s2Len)
@@ -96,7 +98,7 @@ func splitTwoByteSlices(whole []byte) ([]byte, []byte) {
 }
 
 //decodePublicKey takes as parameter a base58 encoded public key string, decodes it into golang structure
-func decodePublicKey(b58 string) *ecdsa.PublicKey {
+func DecodePublicKey(b58 string) *ecdsa.PublicKey {
 	pubKey := new(ecdsa.PublicKey)
 	data, _ := base58.Decode(b58) //TODO: error handling
 	//the public key is built from to big integers, so get those first, then construct the key
@@ -142,7 +144,7 @@ func HexToPublicKey(xHex string, yHex string) *ecdsa.PublicKey {
 }
 
 //hexToPrivateKey converts a hex-encoded string into a golang private key structure
-func hexToPrivateKey(hexStr string) *ecdsa.PrivateKey {
+func HexToPrivateKey(hexStr string) *ecdsa.PrivateKey {
 	bytes, err := hex.DecodeString(hexStr)
 	print(err)
 

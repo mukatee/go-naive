@@ -2,19 +2,21 @@ package main
 
 import (
 	"github.com/mukatee/go-naive/chain"
+	"github.com/mukatee/go-naive/wallet"
 	"io"
 	"log"
 	"os"
 )
 
 func main() {
+	print(wallet.HelpText)
 	setupLogging()
-	addr, loaded := chain.InitWallet()
+	addr, loaded := wallet.InitWallet()
 	loaded = chain.InitBlockChain()
 	if !loaded {
 		chain.BootstrapTestEnv(addr)
 	}
-	chain.ReadConsole()
+	wallet.ReadConsole()
 }
 
 func setupLogging() {

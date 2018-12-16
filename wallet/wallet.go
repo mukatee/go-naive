@@ -1,14 +1,15 @@
-package chain
+package wallet
 
 import (
 	"bufio"
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"github.com/mukatee/go-naive/chain"
+	"github.com/mukatee/go-naive/cryptoff"
 	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
 )
 
 var walletPath = "node/wallet/"
@@ -26,39 +27,39 @@ func ReadConsole() {
 		input := scanner.Text()
 		switch input {
 		case "balance":
-			balance := balanceFor(publicAddr)
+			balance := chain.BalanceFor(publicAddr)
 			fmt.Println(balance)
 		case "exit":
 			writeWallet()
-			writeBlockChain()
+			chain.WriteBlockChain()
 			os.Exit(1)
 			//break readloop
 		case "save":
 			writeWallet()
-			writeBlockChain()
+			chain.WriteBlockChain()
 		case "send":
 			walletSend()
 		case "show address":
 			log.Print("Wallet address: ")
-			log.Print("        pubkey: ", encodePublicKey(&walletKey.PublicKey))
-			log.Print("       privkey: ", encodePrivateKey(walletKey))
+			log.Print("        pubkey: ", cryptoff.EncodePublicKey(&walletKey.PublicKey))
+			log.Print("       privkey: ", cryptoff.EncodePrivateKey(walletKey))
 		case "create address":
-			privKey, pubKey, addressStr := createAddress()
-			privStr := encodePrivateKey(privKey)
-			pubStr := encodePublicKey(pubKey)
+			privKey, pubKey, addressStr := cryptoff.CreateAddress()
+			privStr := cryptoff.EncodePrivateKey(privKey)
+			pubStr := cryptoff.EncodePublicKey(pubKey)
 			log.Print("Created address: ", addressStr)
 			log.Print("Created pubkey: ", pubStr)
 			log.Print("Created priveky: ", privStr)
 		case "address":
 			println(publicAddr)
 		case "private key":
-			print(encodePrivateKey(walletKey))
+			print(cryptoff.EncodePrivateKey(walletKey))
 		case "blocks":
-			printChain(globalChain)
+			chain.PrintChain(chain.GlobalChain)
 		case "mine block":
-			tx := createCoinbaseTx(publicAddr)
-			txs := []Transaction{tx}
-			createBlock(txs, "Hello", 0)
+			tx := chain.CreateCoinbaseTx(publicAddr)
+			txs := []chain.Transaction{tx}
+			chain.CreateBlock(txs, "Hello", 0)
 		default:
 			println("Unknown command: ", input)
 		}
@@ -79,7 +80,7 @@ func InitWallet() (string, bool) {
 	loaded := false
 	if os.IsNotExist(err) {
 		log.Print("No wallet file found. Creating new.")
-		walletKey, _, publicAddr = createAddress()
+		walletKey, _, publicAddr = cryptoff.CreateAddress()
 		log.Println("Created address: ", publicAddr)
 		writeWallet()
 	} else {
@@ -105,15 +106,15 @@ func readWallet() {
 	walletBalance = int64(data["balance"].(float64))
 	//TODO: why storing empty private key leads to this weirdness?
 	//println("priv:", data["priv"].(string))
-	walletKey = decodePrivateKey(data["priv"].(string))
+	walletKey = cryptoff.DecodePrivateKey(data["priv"].(string))
 	//println("wallet key:", walletKey.D.String())
 	//println("", walletKey.PublicKey)
-	publicAddr = encodePublicKey(&walletKey.PublicKey)
+	publicAddr = cryptoff.EncodePublicKey(&walletKey.PublicKey)
 	log.Println("wallet public key: ", publicAddr)
 }
 
 func writeWallet() {
-	privStr := encodePrivateKey(walletKey)
+	privStr := cryptoff.EncodePrivateKey(walletKey)
 	fullPath := walletPath + walletFileName
 	log.Print("Writing wallet to path:" + fullPath)
 	err := os.MkdirAll(walletPath, os.ModePerm)
@@ -134,57 +135,4 @@ func writeWallet() {
 
 func walletSend() {
 	//TODO: add sending funds to another user
-}
-
-//balanceFor counts the unspent balance for given address (as count of unspent txouts)
-//address parameter given is the base58 encoded public key
-func balanceFor(address string) int {
-	log.Print("Calculating balance for address:" + address)
-	log.Printf("Number of unspent tx-out: %d", len(unspentTxOuts))
-	balance := 0
-	for _, val := range unspentTxOuts {
-		if val.Address == address {
-			balance += val.Amount
-		}
-	}
-	log.Print("Balance for " + address + " = " + strconv.Itoa(balance))
-	return balance
-}
-
-//findTxInsFor looks for unspent txouts for the given address to match the amount wanting to spend
-func findTxInsFor(address string, amount int) ([]TxIn, int) {
-	log.Print("Searching for unspent txOuts for " + address + ", to amount of " + strconv.Itoa(amount))
-	balance := 0
-	var unspents []TxIn
-	for _, val := range unspentTxOuts {
-		if val.Address == address {
-			balance += val.Amount
-			txIn := TxIn{val.TxId, val.TxIdx}
-			unspents = append(unspents, txIn)
-		}
-		if balance >= amount {
-			log.Print("Found unspent txOuts: ", unspents, ", total funds = "+strconv.Itoa(balance))
-			return unspents, balance
-		}
-	}
-	log.Print("Did not find suffient funds for " + address + ", requested " + strconv.Itoa(amount) + ", found " + strconv.Itoa(balance))
-	return nil, -1
-}
-
-//splitTxIns produces two txouts, by taking the total sum of txins and the amount to send
-//and splitting this to one txout for the coins to send, and another for the remains to send back to self
-func splitTxIns(from string, to string, toSend int, total int) []TxOut {
-	log.Print("Creating txIn splits for transaction from " + from + " to " + to)
-	diff := total - toSend
-	txOut := TxOut{to, toSend}
-	var txOuts []TxOut
-	txOuts = append(txOuts, txOut)
-	if diff == 0 {
-		log.Print("send and txin amount equal, only creating single txout:", txOuts)
-		return txOuts
-	}
-	log.Print("created sending txout and change txout:", txOuts)
-	txOut2 := TxOut{from, diff}
-	txOuts = append(txOuts, txOut2)
-	return txOuts
 }

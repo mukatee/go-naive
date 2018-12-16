@@ -1,17 +1,17 @@
-package chain
+package cryptoff
 
 //https://github.com/akamensky/base58
 
 import (
-	"testing"
 	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
-	"encoding/asn1"
-	"crypto/rand"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"crypto/sha256"
+	"testing"
 )
 
 /**
@@ -22,7 +22,7 @@ http://codrspace.com/supcik/golang-jwt-ecdsa/
 2. ladataan numero tänne, luodaan private key siitä, public key private keystä
 3. signature tehdään javassa, tuodaan tänne
 4. verrataan signaturea public keyhin täällä
- */
+*/
 
 //test to see a signature created in Java can be parsed and verified in Go
 func TestJavaVerify(t *testing.T) {
@@ -96,8 +96,8 @@ func verifyMySig(pub *ecdsa.PublicKey, msg string, sig []byte) bool {
 
 	var esig ecdsaSignature
 	asn1.Unmarshal(sig, &esig)
-//	esig.R.SetString("89498588918986623250776516710529930937349633484023489594523498325650057801271", 0)
-//	esig.S.SetString("67852785826834317523806560409094108489491289922250506276160316152060290646810", 0)
+	//	esig.R.SetString("89498588918986623250776516710529930937349633484023489594523498325650057801271", 0)
+	//	esig.S.SetString("67852785826834317523806560409094108489491289922250506276160316152060290646810", 0)
 	fmt.Printf("R: %d , S: %d", esig.R, esig.S)
 	println()
 	return ecdsa.Verify(pub, digest[:], esig.R, esig.S)

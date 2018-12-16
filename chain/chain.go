@@ -6,7 +6,6 @@ package chain
 //https://stackoverflow.com/questions/16900938/how-to-place-golang-project-a-set-of-packages-to-github
 
 import (
-	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -23,10 +22,8 @@ import (
 var chainPath = "node/blocks/"
 var chainFileName = "blocks.json"
 
-var Curve = elliptic.P256()
-
 //this is the current chain this node is on
-var globalChain []Block
+var GlobalChain []Block
 
 type Block struct {
 	Index        int           //the block index in the chain
@@ -68,7 +65,7 @@ func addTransaction(tx Transaction) {
 //returns the index of matching (block, transaction) in the blockchain or -1, -1 if not found
 func findTransaction(txId string) (int, int) {
 	print("looking for txid:", txId)
-	for bIdx, block := range globalChain {
+	for bIdx, block := range GlobalChain {
 		for tIdx, tx := range block.Transactions {
 			if tx.Id == txId {
 				return bIdx, tIdx
@@ -145,14 +142,14 @@ func createGenesisBlock(addToChain bool) Block {
 	log.Println("Creating genesis block")
 	genesisTime, _ := time.Parse("Jan 2 15:04 2006", "Mar 15 19:00 2018")
 	genesisAddress := "3uGQcE7wPMYoJDGStgWMkm6qj7u83TDmcvXUYVoVeDq4sYRMZXisB6vxMwQWCMPe1eX5rGPgoJ9oyYoFNGwpqNcPU"
-	cbTx := createCoinbaseTx(genesisAddress)
+	cbTx := CreateCoinbaseTx(genesisAddress)
 	txs := []Transaction{cbTx}
 	block := Block{1, "", "0", genesisTime, "Teemu oli täällä", txs, 1, 1}
 	hash := hash(&block)
 	block.Hash = hash
 	if addToChain {
 		log.Println("Adding genesis block to chain")
-		globalChain = append(globalChain, block)
+		GlobalChain = append(GlobalChain, block)
 		addTransaction(cbTx)
 	}
 	log.Println("Genesis block creation finished:", block)
@@ -213,11 +210,11 @@ func validateChain(chain []Block) bool {
 
 //create a block from the given parameters, and find a nonce to produce a hash matching the difficulty
 //finally, append new block to current chain
-func createBlock(txs []Transaction, blockData string, difficulty int) Block {
+func CreateBlock(txs []Transaction, blockData string, difficulty int) Block {
 	log.Println("Creating new block, tx count = ", len(txs), "difficult=", difficulty, "block-data=", blockData)
-	chainLength := len(globalChain)
+	chainLength := len(GlobalChain)
 	log.Println("current chain len:", chainLength)
-	previous := globalChain[chainLength-1]
+	previous := GlobalChain[chainLength-1]
 	index := previous.Index + 1
 	timestamp := time.Now().UTC()
 	nonce := 0
@@ -240,11 +237,11 @@ func createBlock(txs []Transaction, blockData string, difficulty int) Block {
 
 //add a new block to the existing chain
 func addBlock(block Block) {
-	chainLength := len(globalChain)
+	chainLength := len(GlobalChain)
 	log.Println("adding block to chain. current height=", chainLength, ", block=", block)
-	previousBlock := globalChain[chainLength-1]
+	previousBlock := GlobalChain[chainLength-1]
 	block.PreviousHash = previousBlock.Hash
-	globalChain = append(globalChain, block)
+	GlobalChain = append(GlobalChain, block)
 	log.Println("Adding " + strconv.Itoa(len(block.Transactions)) + " transactions from block.")
 	for _, tx := range block.Transactions {
 		addTransaction(tx)
@@ -263,7 +260,7 @@ func printBlock(block Block) {
 			for _, txIn := range tx.TxIns {
 				blockIdx, txIdx := findTransaction(txIn.TxId)
 				fmt.Printf("--txin: block id = %d, txid = %d\n", blockIdx, txIdx)
-				txOut := globalChain[blockIdx].Transactions[txIdx]
+				txOut := GlobalChain[blockIdx].Transactions[txIdx]
 				fmt.Printf("---in from %s: (%s, %d)\n", txOut.Sender, txIn.TxId)
 			}
 		}
@@ -274,7 +271,7 @@ func printBlock(block Block) {
 	//	println()
 }
 
-func printChain(chain []Block) {
+func PrintChain(chain []Block) {
 	for _, block := range chain {
 		printBlock(block)
 	}
@@ -318,7 +315,7 @@ func marshallDemarshallChain(chain []Block) {
 //https://lhartikk.github.io/jekyll/update/2017/07/14/chapter1.html
 func takeLongestChain(newChain []Block) bool {
 	newLength := len(newChain)
-	oldLength := len(globalChain)
+	oldLength := len(GlobalChain)
 	log.Println("Comparing new chain vs old chain length:", newLength, " vs. ", oldLength)
 	fine := validateChain(newChain)
 	if !fine {
@@ -327,7 +324,7 @@ func takeLongestChain(newChain []Block) bool {
 	}
 	if newLength > oldLength {
 		log.Println("New chain longer, replacing old.")
-		globalChain = newChain
+		GlobalChain = newChain
 	} else {
 		log.Println("New chain not longer, keeping old.")
 	}
@@ -345,7 +342,7 @@ func takeMostDifficultChain(newChain []Block) bool {
 		return false
 	}
 
-	totalDiff1 := calculateChainDifficulty(globalChain)
+	totalDiff1 := calculateChainDifficulty(GlobalChain)
 	totalDiff2 := calculateChainDifficulty(newChain)
 
 	if totalDiff2 < totalDiff1 {
@@ -353,7 +350,7 @@ func takeMostDifficultChain(newChain []Block) bool {
 		return false
 	}
 	log.Println("switching chain to more difficult")
-	globalChain = newChain
+	GlobalChain = newChain
 	return true
 }
 
@@ -371,15 +368,15 @@ func BootstrapTestEnv(address string) {
 	log.Println("Bootstrapping test env.")
 	createGenesisBlock(true)
 
-	cbTx := createCoinbaseTx(address)
+	cbTx := CreateCoinbaseTx(address)
 	txs := []Transaction{cbTx}
-	createBlock(txs, "My data", 0)
+	CreateBlock(txs, "My data", 0)
 	log.Println("Test env bootstrapped")
 }
 
-func writeBlockChain() {
+func WriteBlockChain() {
 	log.Println("Starting to write blockchain to disk")
-	chainJson := JsonChain(globalChain)
+	chainJson := JsonChain(GlobalChain)
 	err := os.MkdirAll(chainPath, os.ModePerm)
 	log.Println("File path created/found, " + chainPath)
 	f, err := os.Create(chainPath + chainFileName)
@@ -419,16 +416,69 @@ func readBlockChain() {
 		//TODO: panic?
 	}
 	//convert bytes in file to golang objecs in the chain
-	json.Unmarshal(bytes, &globalChain)
+	json.Unmarshal(bytes, &GlobalChain)
 	//a slice is passed as copy of header, so this does not copy the whole array
 	//https://stackoverflow.com/questions/39993688/are-golang-slices-pass-by-value#39993797
-	valid := validateChain(globalChain)
+	valid := validateChain(GlobalChain)
 	if !valid {
 		panic("Invalid chain loaded, exit")
 	}
-	for _, block := range globalChain {
+	for _, block := range GlobalChain {
 		for _, tx := range block.Transactions {
 			addTransaction(tx)
 		}
 	}
+}
+
+//findTxInsFor looks for unspent txouts for the given address to match the amount wanting to spend
+func findTxInsFor(address string, amount int) ([]TxIn, int) {
+	log.Print("Searching for unspent txOuts for " + address + ", to amount of " + strconv.Itoa(amount))
+	balance := 0
+	var unspents []TxIn
+	for _, val := range unspentTxOuts {
+		if val.Address == address {
+			balance += val.Amount
+			txIn := TxIn{val.TxId, val.TxIdx}
+			unspents = append(unspents, txIn)
+		}
+		if balance >= amount {
+			log.Print("Found unspent txOuts: ", unspents, ", total funds = "+strconv.Itoa(balance))
+			return unspents, balance
+		}
+	}
+	log.Print("Did not find suffient funds for " + address + ", requested " + strconv.Itoa(amount) + ", found " + strconv.Itoa(balance))
+	return nil, -1
+}
+
+//balanceFor counts the unspent balance for given address (as count of unspent txouts)
+//address parameter given is the base58 encoded public key
+func BalanceFor(address string) int {
+	log.Print("Calculating balance for address:" + address)
+	log.Printf("Number of unspent tx-out: %d", len(unspentTxOuts))
+	balance := 0
+	for _, val := range unspentTxOuts {
+		if val.Address == address {
+			balance += val.Amount
+		}
+	}
+	log.Print("Balance for " + address + " = " + strconv.Itoa(balance))
+	return balance
+}
+
+//splitTxIns produces two txouts, by taking the total sum of txins and the amount to send
+//and splitting this to one txout for the coins to send, and another for the remains to send back to self
+func SplitTxIns(from string, to string, toSend int, total int) []TxOut {
+	log.Print("Creating txIn splits for transaction from " + from + " to " + to)
+	diff := total - toSend
+	txOut := TxOut{to, toSend}
+	var txOuts []TxOut
+	txOuts = append(txOuts, txOut)
+	if diff == 0 {
+		log.Print("send and txin amount equal, only creating single txout:", txOuts)
+		return txOuts
+	}
+	log.Print("created sending txout and change txout:", txOuts)
+	txOut2 := TxOut{from, diff}
+	txOuts = append(txOuts, txOut2)
+	return txOuts
 }
