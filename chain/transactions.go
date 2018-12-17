@@ -95,11 +95,11 @@ func CreateCoinbaseTx(address string) Transaction {
 	return cbTx
 }
 
-//sendCoins sends "count" number of coins to the "to" address, from the owner of given private key
-func sendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
+//SendCoins sends "count" number of coins to the "to" address, from the owner of given private key
+func SendCoins(privKey *ecdsa.PrivateKey, to string, count int) Transaction {
 	from := cryptoff.EncodePublicKey(&privKey.PublicKey)
 	log.Print("Creating tx to send ", count, " coins from ", from, " to ", to)
-	//TODO: error handling
+	//TODO: error handling (insufficient funds)
 	txIns, total := findTxInsFor(from, count)
 	txOuts := SplitTxIns(from, to, count, total)
 	tx := createTx(privKey, txIns, txOuts)

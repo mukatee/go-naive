@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 )
 
 var walletPath = "node/wallet/"
@@ -21,7 +22,7 @@ var walletBalance int64
 func ReadConsole() {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Println("Welcome, sir!")
-	fmt.Print("> ")
+	fmt.Print("wallet> ")
 
 	for scanner.Scan() {
 		input := scanner.Text()
@@ -65,7 +66,7 @@ func ReadConsole() {
 		}
 
 		//		fmt.Println(input)
-		fmt.Print("> ")
+		fmt.Print("wallet> ")
 	}
 
 	if scanner.Err() != nil {
@@ -134,5 +135,17 @@ func writeWallet() {
 }
 
 func walletSend() {
-	//TODO: add sending funds to another user
+	scanner := bufio.NewScanner(os.Stdin)
+	print("Receiver address:")
+	scanner.Scan()
+	receiver := scanner.Text()
+	print("Amount to send:")
+	scanner.Scan()
+	amountStr := scanner.Text()
+	amount, err := strconv.Atoi(amountStr)
+	if err != nil {
+		println("oh no, error occurred:", err)
+	}
+	println("sending ", amount, "coins to", receiver)
+	chain.SendCoins(walletKey, receiver, amount)
 }
