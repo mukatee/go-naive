@@ -144,7 +144,8 @@ func walletSend() {
 	amountStr := scanner.Text()
 	amount, err := strconv.Atoi(amountStr)
 	if err != nil {
-		println("oh no, error occurred:", err)
+		println("oh no, error occurred, no coins sent:", err)
+		return
 	}
 	println("sending ", amount, "coins to", receiver)
 	chain.SendCoins(walletKey, receiver, amount)

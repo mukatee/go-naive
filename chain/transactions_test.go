@@ -3,6 +3,7 @@ package chain
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"github.com/mukatee/go-naive/cryptoff"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -10,31 +11,31 @@ import (
 func TestCoinbaseOnly(t *testing.T) {
 	createGenesisBlock(true)
 
-	privKey, _ := ecdsa.GenerateKey(Curve, rand.Reader)
+	privKey, _ := ecdsa.GenerateKey(cryptoff.Curve, rand.Reader)
 	pubKey := &privKey.PublicKey
-	address := encodePublicKey(pubKey)
-	cbTx := createCoinbaseTx(address)
+	address := cryptoff.EncodePublicKey(pubKey)
+	cbTx := CreateCoinbaseTx(address)
 	txs := []Transaction{cbTx}
-	createBlock(txs, "My data", 0)
+	CreateBlock(txs, "My data", 0)
 
-	assert.Equal(t, len(globalChain), 2, "Genesis block + single block with only coinbase transaction expected")
+	assert.Equal(t, len(GlobalChain), 2, "Genesis block + single block with only coinbase transaction expected")
 
-	valid := validateChain(globalChain)
+	valid := validateChain(GlobalChain)
 	assert.True(t, valid, "Blockchain should be valid")
 }
 
 func TestCoinbaseAndUsers(t *testing.T) {
 	createGenesisBlock(true)
 
-	privKey1, _, address1 := createAddress()
-	_, _, address2 := createAddress()
+	privKey1, _, address1 := cryptoff.CreateAddress()
+	_, _, address2 := cryptoff.CreateAddress()
 
-	cbTx := createCoinbaseTx(address1)
+	cbTx := CreateCoinbaseTx(address1)
 
 	txs := []Transaction{cbTx}
-	createBlock(txs, "My data", 0)
+	CreateBlock(txs, "My data", 0)
 
-	u1Tx := sendCoins(privKey1, address2, 50)
+	u1Tx := SendCoins(privKey1, address2, 50)
 
 	/*	txIn := TxIn{cbTx.Id, 0}
 		txIns := []TxIn{txIn}
@@ -47,12 +48,12 @@ func TestCoinbaseAndUsers(t *testing.T) {
 		u1Tx := createTx(privKey1, txIns, txOuts)*/
 
 	txs = []Transaction{u1Tx}
-	createBlock(txs, "My data", 0)
+	CreateBlock(txs, "My data", 0)
 
-	assert.Equal(t, len(globalChain), 3, "Genesis block + two blocks expected")
+	assert.Equal(t, len(GlobalChain), 3, "Genesis block + two blocks expected")
 
-	valid := validateChain(globalChain)
+	valid := validateChain(GlobalChain)
 	assert.True(t, valid, "Blockchain should be valid")
-	assert.Equal(t, 50, balanceFor(address2))
-	assert.Equal(t, COINBASE_AMOUNT-50, balanceFor(address1))
+	assert.Equal(t, 50, BalanceFor(address2))
+	assert.Equal(t, COINBASE_AMOUNT-50, BalanceFor(address1))
 }

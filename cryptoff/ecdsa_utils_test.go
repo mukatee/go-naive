@@ -29,12 +29,12 @@ func TestJavaVerify(t *testing.T) {
 	//this is a hex-string serialized in Java for the private key.
 	//so re-build the private key here to get public key for verification.
 	//should only pass public key but works for this test
-	privKey := hexToPrivateKey("10EDB31521C5ABF4DA520F784F927B390B4A844FCED4BF2639588E9430BDA9D1")
+	privKey := HexToPrivateKey("10EDB31521C5ABF4DA520F784F927B390B4A844FCED4BF2639588E9430BDA9D1")
 	ePubKey := &privKey.PublicKey
 
 	xHexStr := "4bc55d002653ffdbb53666a2424d0a223117c626b19acef89eefe9b3a6cfd0eb"
 	yHexStr := "d8308953748596536b37e4b10ab0d247f6ee50336a1c5f9dc13e3c1bb0435727"
-	ePubKey = hexToPublicKey(xHexStr, yHexStr)
+	ePubKey = HexToPublicKey(xHexStr, yHexStr)
 
 	//the signature in ASN.1 format from Java
 	sig := "3045022071f06054f450f808aa53294d34f76afd288a23749628cc58add828e8b8f2b742022100f82dcb51cc63b29f4f8b0b838c6546be228ba11a7c23dc102c6d9dcba11a8ff2"
@@ -46,7 +46,7 @@ func TestJavaVerify(t *testing.T) {
 //sign a piece of data in Go and verify it in Go as well. To verify we got the basic signature functionality ok
 func TestSelfSignAndVerify(t *testing.T) {
 	privKey, _ := ecdsa.GenerateKey(Curve, rand.Reader)
-	esig := createSignature([]byte("Hello World"), privKey)
+	esig := CreateSignature([]byte("Hello World"), privKey)
 	ok := verifyESig(&privKey.PublicKey, []byte("Hello World"), esig)
 	assert.True(t, ok, "Golang should create and verify its own signatures OK")
 }
@@ -58,17 +58,17 @@ func TestEncodeDecodeKeys(t *testing.T) {
 	privKey, _ := ecdsa.GenerateKey(Curve, rand.Reader)
 	pubKey := privKey.PublicKey
 
-	pub58 := encodePublicKey(pubKey)
-	priv58 := encodePrivateKey(privKey)
+	pub58 := EncodePublicKey(&pubKey)
+	priv58 := EncodePrivateKey(privKey)
 
 	msg := []byte("Hello ECDSA")
-	esig := createSignature(msg, privKey)
+	esig := CreateSignature(msg, privKey)
 
-	pubKey2 := decodePublicKey(pub58)
+	pubKey2 := DecodePublicKey(pub58)
 	verifyESig(pubKey2, msg, esig)
 
-	privKey2 := decodePrivateKey(priv58)
-	esig2 := createSignature(msg, privKey2)
+	privKey2 := DecodePrivateKey(priv58)
+	esig2 := CreateSignature(msg, privKey2)
 	ok := verifyESig(pubKey2, msg, esig2)
 	assert.True(t, ok, "Golang (de)serialized keys should work to sign OK")
 
