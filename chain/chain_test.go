@@ -11,9 +11,9 @@ import (
 func TestTakeLongest(t *testing.T) {
 	//create test chains, check if it changes to longest, ...
 	GlobalChain = nil
-	chain1 := createTestChain(10)
+	chain1 := CreateTestChain(10)
 	GlobalChain = nil
-	chain2 := createTestChain(16)
+	chain2 := CreateTestChain(16)
 	assert.Equal(t, 11, len(chain1))
 	assert.Equal(t, 17, len(chain2))
 	GlobalChain = chain1
@@ -46,18 +46,8 @@ func TestTakeMostDifficult(t *testing.T) {
 	//	println("diff2: ", diff2Str)
 }
 
-//create a test chain of given length
-func createTestChain(size int) []Block {
-	createGenesisBlock(true)
-	for i := 0; i < size; i++ {
-		data := fmt.Sprintf("Test%d", i)
-		CreateBlock(nil, data, 0)
-	}
-	return GlobalChain
-}
-
 func createTestDiffChain(size int, diffs ...int) []Block {
-	createTestChain(size)
+	CreateTestChain(size)
 	for i := 1; i <= size; i++ {
 		GlobalChain[i].Difficulty = 10
 		//previous hash is also used for block hash so have to re-set it before calculating hash

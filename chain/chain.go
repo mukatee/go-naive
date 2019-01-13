@@ -24,6 +24,8 @@ var chainFileName = "blocks.json"
 
 //this is the current chain this node is on
 var GlobalChain []Block
+var GenesisTime, _ = time.Parse("Jan 2 15:04 2006", "Mar 15 19:00 2018")
+var GenesisAddress = "3uGQcE7wPMYoJDGStgWMkm6qj7u83TDmcvXUYVoVeDq4sYRMZXisB6vxMwQWCMPe1eX5rGPgoJ9oyYoFNGwpqNcPU"
 
 type Block struct {
 	Index        int           //the block index in the chain
@@ -140,11 +142,9 @@ func hash(block *Block) string {
 //create genesis block, the first one on the chain to bootstrap the chain
 func createGenesisBlock(addToChain bool) Block {
 	log.Println("Creating genesis block")
-	genesisTime, _ := time.Parse("Jan 2 15:04 2006", "Mar 15 19:00 2018")
-	genesisAddress := "3uGQcE7wPMYoJDGStgWMkm6qj7u83TDmcvXUYVoVeDq4sYRMZXisB6vxMwQWCMPe1eX5rGPgoJ9oyYoFNGwpqNcPU"
-	cbTx := CreateCoinbaseTx(genesisAddress)
+	cbTx := CreateCoinbaseTx(GenesisAddress)
 	txs := []Transaction{cbTx}
-	block := Block{1, "", "0", genesisTime, "Teemu oli täällä", txs, 1, 1}
+	block := Block{1, "", "0", GenesisTime, "Teemu oli täällä", txs, 1, 1}
 	hash := hash(&block)
 	block.Hash = hash
 	if addToChain {
@@ -261,7 +261,7 @@ func printBlock(block Block) {
 				blockIdx, txIdx := findTransaction(txIn.TxId)
 				fmt.Printf("--txin: block id = %d, txid = %d\n", blockIdx, txIdx)
 				txOut := GlobalChain[blockIdx].Transactions[txIdx]
-				fmt.Printf("---in from %s: (%s, %d)\n", txOut.Sender, txIn.TxId)
+				fmt.Printf("---in from %s: (%s, %d)\n", txOut.Sender, txIn.TxId, txIn.TxIdx)
 			}
 		}
 		for _, txOut := range tx.TxOuts {
@@ -363,15 +363,14 @@ func calculateChainDifficulty(chain []Block) float64 {
 	return totalDiff
 }
 
-//create a chain with a single coinbase transaction to given address
-func BootstrapTestEnv(address string) {
-	log.Println("Bootstrapping test env.")
+//create a test chain of given length (genesis + length)
+func CreateTestChain(size int) []Block {
 	createGenesisBlock(true)
-
-	cbTx := CreateCoinbaseTx(address)
-	txs := []Transaction{cbTx}
-	CreateBlock(txs, "My data", 0)
-	log.Println("Test env bootstrapped")
+	for i := 0; i < size; i++ {
+		data := fmt.Sprintf("Test%d", i+2) //+1 for coinbase, +1 for start at 1 vs 0
+		CreateBlock(nil, data, 0)
+	}
+	return GlobalChain
 }
 
 func WriteBlockChain() {

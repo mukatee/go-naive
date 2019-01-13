@@ -1,12 +1,16 @@
-package chain
+package net
 
 import (
 	"fmt"
+	"github.com/mukatee/go-naive/chain"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 )
 
+//https://tutorialedge.net/golang/creating-simple-web-server-with-golang/
 //https://astaxie.gitbooks.io/build-web-application-with-golang/en/03.2.html
 func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()       // parse arguments, you have to call this by yourself
@@ -22,13 +26,13 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 }
 
 func rpcBlocks(w http.ResponseWriter, r *http.Request) {
-	response := JsonChain(GlobalChain)
+	response := chain.JsonChain(chain.GlobalChain)
 	fmt.Fprintf(w, response) // send data to client side
 }
 
 func rpcMineBlock(w http.ResponseWriter, r *http.Request) {
-	block := CreateBlock(nil, "RPC test block", 0)
-	response := JsonBlock(block)
+	block := chain.CreateBlock(nil, "RPC test block", 0)
+	response := chain.JsonBlock(block)
 	fmt.Fprintf(w, response) // send data to client side
 }
 
@@ -53,14 +57,18 @@ func rpcAddPeer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RunServer() {
+func StartServer() {
 	http.HandleFunc("/hello", sayhelloName)     // set router
 	http.HandleFunc("/blocks", rpcBlocks)       // set router
 	http.HandleFunc("/mineblock", rpcMineBlock) // set router
 	http.HandleFunc("/peers", rpcListPeers)     // set router
 	http.HandleFunc("/addPeer", rpcAddPeer)     // set router
-	err := http.ListenAndServe(":9090", nil)    // set listen port
+	//https://stackoverflow.com/questions/49067160/what-is-the-difference-in-listening-on-0-0-0-080-and-80
+	//https://grokbase.com/t/gg/golang-nuts/141ee4dqyg/go-nuts-how-to-know-when-listenandserve-is-ready-to-handle-connections
+	listener, err := net.Listen("tcp", ":9090")
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
+		os.Exit(1)
 	}
+	go http.Serve(listener, nil)
 }
