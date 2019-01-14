@@ -13,7 +13,7 @@ import (
 )
 
 func TestGetBlocks(t *testing.T) {
-	chain.CreateTestChain(1)
+	chain.CreateTestChain(chain.GenesisAddress, 1)
 	StartServer()
 	time.Sleep(1)
 	resp, err := http.Get("http://127.0.0.1:9090/blocks")
@@ -36,7 +36,9 @@ func AssertTestBlock(t *testing.T, idx int, block, prevBlock chain.Block) {
 	testBlock := block
 	assert.Equal(t, 0, testBlock.Difficulty)
 	assert.Equal(t, 0, testBlock.Nonce)
-	assert.Equal(t, 0, len(testBlock.Transactions))
+	assert.Equal(t, 1, len(testBlock.Transactions))
+	cbTx := testBlock.Transactions[0]
+	assertCoinbaseTx(t, cbTx)
 	assert.Equal(t, idx, testBlock.Index)
 	data := fmt.Sprintf("Test%d", idx)
 	assert.Equal(t, data, testBlock.Data)
@@ -56,11 +58,15 @@ func AssertGenesisBlock(t *testing.T, block chain.Block) {
 	assert.Equal(t, 1, genesisBlock.Nonce)
 	assert.Equal(t, 1, len(genesisBlock.Transactions))
 	coinbase := genesisBlock.Transactions[0]
-	assert.Equal(t, 0, len(coinbase.TxIns))
-	assert.Equal(t, 1, len(coinbase.TxOuts))
-	txOut := coinbase.TxOuts[0]
+	assertCoinbaseTx(t, coinbase)
+}
+
+func assertCoinbaseTx(t *testing.T, cbTx chain.Transaction) {
+	assert.Equal(t, 0, len(cbTx.TxIns))
+	assert.Equal(t, 1, len(cbTx.TxOuts))
+	txOut := cbTx.TxOuts[0]
 	assert.Equal(t, chain.GenesisAddress, txOut.Address)
 	assert.Equal(t, chain.COINBASE_AMOUNT, txOut.Amount)
-	assert.Equal(t, "coinbase", coinbase.Signature)
-	assert.Equal(t, "", coinbase.Sender)
+	assert.Equal(t, "coinbase", cbTx.Signature)
+	assert.Equal(t, "", cbTx.Sender)
 }

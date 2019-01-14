@@ -31,7 +31,7 @@ func rpcBlocks(w http.ResponseWriter, r *http.Request) {
 }
 
 func rpcMineBlock(w http.ResponseWriter, r *http.Request) {
-	block := chain.CreateBlock(nil, "RPC test block", 0)
+	block := chain.CreateBlock(chain.GenesisAddress, nil, "RPC test block", 0)
 	response := chain.JsonBlock(block)
 	fmt.Fprintf(w, response) // send data to client side
 }

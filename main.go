@@ -14,7 +14,7 @@ func main() {
 	addr, loaded := wallet.InitWallet()
 	loaded = chain.InitBlockChain()
 	if !loaded {
-		chain.BootstrapTestEnv(addr)
+		chain.CreateTestChain(addr, 2)
 	}
 	wallet.ReadConsole()
 }

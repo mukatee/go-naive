@@ -210,7 +210,10 @@ func validateChain(chain []Block) bool {
 
 //create a block from the given parameters, and find a nonce to produce a hash matching the difficulty
 //finally, append new block to current chain
-func CreateBlock(txs []Transaction, blockData string, difficulty int) Block {
+func CreateBlock(cbAddr string, newTxs []Transaction, blockData string, difficulty int) Block {
+	cbTx := CreateCoinbaseTx(cbAddr)
+	txs := []Transaction{cbTx}
+	txs = append(txs, newTxs...)
 	log.Println("Creating new block, tx count = ", len(txs), "difficult=", difficulty, "block-data=", blockData)
 	chainLength := len(GlobalChain)
 	log.Println("current chain len:", chainLength)
@@ -364,11 +367,11 @@ func calculateChainDifficulty(chain []Block) float64 {
 }
 
 //create a test chain of given length (genesis + length)
-func CreateTestChain(size int) []Block {
+func CreateTestChain(cbAddr string, size int) []Block {
 	createGenesisBlock(true)
 	for i := 0; i < size; i++ {
 		data := fmt.Sprintf("Test%d", i+2) //+1 for coinbase, +1 for start at 1 vs 0
-		CreateBlock(nil, data, 0)
+		CreateBlock(cbAddr, nil, data, 0)
 	}
 	return GlobalChain
 }

@@ -58,9 +58,7 @@ func ReadConsole() {
 		case "blocks":
 			chain.PrintChain(chain.GlobalChain)
 		case "mine block":
-			tx := chain.CreateCoinbaseTx(publicAddr)
-			txs := []chain.Transaction{tx}
-			chain.CreateBlock(txs, "Hello", 0)
+			chain.CreateBlock(publicAddr, nil, "Hello", 0)
 		default:
 			println("Unknown command: ", input)
 		}
